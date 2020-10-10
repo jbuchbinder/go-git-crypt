@@ -17,8 +17,7 @@ type Key struct {
 
 // Load imports a key from an io.Reader
 func (k *Key) Load(in io.Reader) error {
-	preamble := make([]byte, 16)
-	_, err := in.Read(preamble)
+	preamble, err := readXBytes(in, 16)
 	if err != nil {
 		return err
 	}
@@ -76,8 +75,7 @@ func (k *Key) LoadHeader(in io.Reader) error {
 				// edge cases with an empty std::vector (particularly, &bytes[0]).
 				k.KeyName = ""
 			} else {
-				raw := make([]byte, fieldLen)
-				_, err := in.Read(raw)
+				raw, err := readXBytes(in, int(fieldLen))
 				k.KeyName = string(raw)
 				err = k.ValidateKeyName(k.KeyName)
 				if err != nil {
@@ -92,8 +90,7 @@ func (k *Key) LoadHeader(in io.Reader) error {
 			if fieldLen > maxFieldLength {
 				return errors.New("malformed")
 			}
-			ignore := make([]byte, fieldLen)
-			_, err := in.Read(ignore)
+			_, err := readXBytes(in, int(fieldLen))
 			if err != nil {
 				return errors.New("malformed")
 			}
@@ -168,8 +165,7 @@ func (k *KeyEntry) Load(in io.Reader) error {
 			if fieldLen != aesKeyLen {
 				return fmt.Errorf("malformed (bad AES key)")
 			}
-			raw := make([]byte, fieldLen)
-			_, err := in.Read(raw)
+			raw, err := readXBytes(in, int(fieldLen))
 			if err != nil {
 				return err
 			}
@@ -178,8 +174,7 @@ func (k *KeyEntry) Load(in io.Reader) error {
 			if fieldLen != hmacKeyLen {
 				return fmt.Errorf("malformed (bad HMAC key)")
 			}
-			raw := make([]byte, fieldLen)
-			_, err := in.Read(raw)
+			raw, err := readXBytes(in, int(fieldLen))
 			if err != nil {
 				return err
 			}
@@ -190,8 +185,7 @@ func (k *KeyEntry) Load(in io.Reader) error {
 			if fieldLen > maxFieldLength {
 				return fmt.Errorf("malformed (> maxFieldLength)")
 			}
-			ignore := make([]byte, fieldLen)
-			_, err := in.Read(ignore)
+			_, err := readXBytes(in, int(fieldLen))
 			if err != nil {
 				return err
 			}
