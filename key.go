@@ -6,13 +6,34 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 )
+
+// KeyFromFile instantiates a new key from a specified file
+func KeyFromFile(filename string) (Key, error) {
+	k := Key{}
+	err := k.LoadFromFile(filename)
+	return k, err
+}
 
 // Key is a git-crypt key structure
 type Key struct {
 	Entries []KeyEntry
 	KeyName string
 	Debug   bool
+}
+
+// LoadFromFile loads a key from a filesystem file
+func (k *Key) LoadFromFile(filename string) error {
+	if !fileExists(filename) {
+		return errors.New("file does not exist")
+	}
+	fp, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+	return k.Load(fp)
 }
 
 // Load imports a key from an io.Reader
@@ -34,7 +55,7 @@ func (k *Key) Load(in io.Reader) error {
 	if k.Debug {
 		log.Printf("format: %d", format)
 	}
-	err = k.LoadHeader(in)
+	err = k.loadHeader(in)
 	if err != nil {
 		return fmt.Errorf("LoadHeader: %s", err.Error())
 	}
@@ -51,7 +72,18 @@ func (k *Key) Load(in io.Reader) error {
 	return nil
 }
 
-func (k *Key) LoadHeader(in io.Reader) error {
+// Store stores a copy of the key to a file
+func (k Key) Store(out io.Writer) error {
+	out.Write([]byte("\x00GITCRYPTKEY"))
+	return errors.New("unimplemented") // TODO: XXX: IMPLEMENT
+}
+
+// Generate generates a new key
+func (k *Key) Generate(version uint32) error {
+	return errors.New("unimplemented") // TODO: XXX: IMPLEMENT
+}
+
+func (k *Key) loadHeader(in io.Reader) error {
 	for {
 		fieldID, err := readBigEndianUint32(in)
 		if err != nil {
@@ -77,7 +109,7 @@ func (k *Key) LoadHeader(in io.Reader) error {
 			} else {
 				raw, err := readXBytes(in, int(fieldLen))
 				k.KeyName = string(raw)
-				err = k.ValidateKeyName(k.KeyName)
+				err = k.validateKeyName(k.KeyName)
 				if err != nil {
 					k.KeyName = ""
 					return errors.New("malformed")
@@ -99,7 +131,7 @@ func (k *Key) LoadHeader(in io.Reader) error {
 	return nil
 }
 
-func (k Key) ValidateKeyName(keyName string) error {
+func (k Key) validateKeyName(keyName string) error {
 	if keyName == "" {
 		return errors.New("key name may not be empty")
 	}
