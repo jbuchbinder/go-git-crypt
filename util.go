@@ -30,6 +30,25 @@ func readBigEndianUint32(in io.Reader) (uint32, error) {
 	return uint32(data[0])<<24 + uint32(data[1])<<16 + uint32(data[2])<<8 + uint32(data[3]), nil
 }
 
+func writeBigEndianUint32(out io.Writer, val uint32) error {
+	data := make([]byte, 4)
+
+	data[0] = byte(val >> 24)
+	data[0] = byte(val >> 16)
+	data[0] = byte(val >> 8)
+	data[0] = byte(val % 256)
+	log.Printf("writeBigEndianUint32 : %#v", data)
+
+	n, err := out.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != 4 {
+		return errors.New("unable to write 4 bytes")
+	}
+	return nil
+}
+
 func readXBytes(in io.Reader, l int) ([]byte, error) {
 	b := make([]byte, l)
 	n, err := in.Read(b)
@@ -40,4 +59,13 @@ func readXBytes(in io.Reader, l int) ([]byte, error) {
 		return b, fmt.Errorf("expected %d bytes, read %d bytes", n, l)
 	}
 	return b, nil
+}
+
+func stringToASCIIBytes(s string) []byte {
+	out := make([]byte, 0)
+	runes := []rune(s)
+	for i := range runes {
+		out = append(out, byte(runes[i]))
+	}
+	return out
 }

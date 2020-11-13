@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 )
 
@@ -18,6 +19,7 @@ func KeyFromFile(filename string) (Key, error) {
 
 // Key is a git-crypt key structure
 type Key struct {
+	Version uint32
 	Entries []KeyEntry
 	KeyName string
 	Debug   bool
@@ -52,6 +54,7 @@ func (k *Key) Load(in io.Reader) error {
 	if format != formatVersion {
 		return fmt.Errorf("uncompatible version %d", format)
 	}
+	k.Version = format
 	if k.Debug {
 		log.Printf("format: %d", format)
 	}
@@ -74,13 +77,42 @@ func (k *Key) Load(in io.Reader) error {
 
 // Store stores a copy of the key to a file
 func (k Key) Store(out io.Writer) error {
-	out.Write([]byte("\x00GITCRYPTKEY"))
-	return errors.New("unimplemented") // TODO: XXX: IMPLEMENT
-}
+	n, err := out.Write([]byte("\x00GITCRYPTKEY"))
+	if err != nil {
+		return err
+	}
+	if n != 12 {
+		return fmt.Errorf("unable to write 12 bytes, wrote %d bytes", n)
+	}
+	writeBigEndianUint32(out, formatVersion)
 
-// Generate generates a new key
-func (k *Key) Generate(version uint32) error {
-	return errors.New("unimplemented") // TODO: XXX: IMPLEMENT
+	if k.KeyName != "" {
+		err = writeBigEndianUint32(out, headerFieldKeyName)
+		if err != nil {
+			return err
+		}
+		kn := stringToASCIIBytes(k.KeyName)
+		err = writeBigEndianUint32(out, uint32(len(kn)))
+		if err != nil {
+			return err
+		}
+		_, err = out.Write(kn)
+		if err != nil {
+			return err
+		}
+	}
+	err = writeBigEndianUint32(out, headerFieldEnd)
+	for _, e := range k.Entries {
+		err = k.Store(out)
+		if err != nil {
+			return err
+		}
+		err = e.Store(out)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (k *Key) loadHeader(in io.Reader) error {
@@ -170,6 +202,56 @@ type KeyEntry struct {
 	HmacKey []byte
 }
 
+// TODO: FIXME: XXX: FINISH IMPLEMENT
+func (k KeyEntry) Store(out io.Writer) error {
+	err := writeBigEndianUint32(out, keyFieldVersion)
+	if err != nil {
+		return err
+	}
+	err = writeBigEndianUint32(out, 4)
+	if err != nil {
+		return err
+	}
+	err = writeBigEndianUint32(out, k.Version)
+	if err != nil {
+		return err
+	}
+
+	// AES key
+	err = writeBigEndianUint32(out, keyFieldAesKey)
+	if err != nil {
+		return err
+	}
+	err = writeBigEndianUint32(out, aesKeyLen)
+	if err != nil {
+		return err
+	}
+	//err = out.write(reinterpret_cast<const char*>(aes_key), AES_KEY_LEN);
+
+	// HMAC key
+	err = writeBigEndianUint32(out, keyFieldHmacKey)
+	if err != nil {
+		return err
+	}
+	err = writeBigEndianUint32(out, hmacKeyLen)
+	if err != nil {
+		return err
+	}
+	//err = out.write(reinterpret_cast<const char*>(hmac_key), HMAC_KEY_LEN);
+
+	// End
+	err = writeBigEndianUint32(out, keyFieldEnd)
+	return err
+}
+
+// Generate generates a new key
+func (k *KeyEntry) Generate(version uint32) error {
+	k.Version = version
+	k.AesKey = randomBytes(aesKeyLen)
+	k.HmacKey = randomBytes(hmacKeyLen)
+	return nil
+}
+
 // Load loads an entry from a stream
 func (k *KeyEntry) Load(in io.Reader) error {
 	for {
@@ -224,4 +306,12 @@ func (k *KeyEntry) Load(in io.Reader) error {
 		}
 	}
 	return nil
+}
+
+func randomBytes(length uint32) []byte {
+	out := make([]byte, length)
+	for i := 0; i < int(length); i++ {
+		out[i] = byte(rand.Intn(255))
+	}
+	return out
 }
