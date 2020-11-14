@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 )
 
@@ -28,6 +29,18 @@ func readBigEndianUint32(in io.Reader) (uint32, error) {
 	}
 	log.Printf("readBigEndianUint32 : %#v", data)
 	return uint32(data[0])<<24 + uint32(data[1])<<16 + uint32(data[2])<<8 + uint32(data[3]), nil
+}
+
+func storeBigEndian32(p []byte, i uint32) {
+	buf := make([]byte, 4)
+	buf[3] = byte(i)
+	i = i >> 8
+	buf[2] = byte(i)
+	i = i >> 8
+	buf[1] = byte(i)
+	i = i >> 8
+	buf[0] = byte(i)
+	p = append(p, buf...)
 }
 
 func writeBigEndianUint32(out io.Writer, val uint32) error {
@@ -66,6 +79,14 @@ func stringToASCIIBytes(s string) []byte {
 	runes := []rune(s)
 	for i := range runes {
 		out = append(out, byte(runes[i]))
+	}
+	return out
+}
+
+func randomBytes(length uint32) []byte {
+	out := make([]byte, length)
+	for i := 0; i < int(length); i++ {
+		out[i] = byte(rand.Intn(255))
 	}
 	return out
 }

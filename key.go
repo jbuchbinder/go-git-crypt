@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"os"
 )
 
@@ -23,6 +22,24 @@ type Key struct {
 	Entries []KeyEntry
 	KeyName string
 	Debug   bool
+}
+
+// Latest returns the latest of the entries from the key file
+func (k *Key) Latest() (KeyEntry, error) {
+	if len(k.Entries) == 0 {
+		return KeyEntry{}, fmt.Errorf("no entries")
+	}
+	return k.Entries[len(k.Entries)-1], nil
+}
+
+// Get retrieves an entry by version number
+func (k *Key) Get(version uint32) (KeyEntry, error) {
+	for _, v := range k.Entries {
+		if v.Version == version {
+			return v, nil
+		}
+	}
+	return KeyEntry{}, fmt.Errorf("not found")
 }
 
 // LoadFromFile loads a key from a filesystem file
@@ -141,7 +158,7 @@ func (k *Key) loadHeader(in io.Reader) error {
 			} else {
 				raw, err := readXBytes(in, int(fieldLen))
 				k.KeyName = string(raw)
-				err = k.validateKeyName(k.KeyName)
+				err = validateKeyName(k.KeyName)
 				if err != nil {
 					k.KeyName = ""
 					return errors.New("malformed")
@@ -159,38 +176,6 @@ func (k *Key) loadHeader(in io.Reader) error {
 				return errors.New("malformed")
 			}
 		}
-	}
-	return nil
-}
-
-func (k Key) validateKeyName(keyName string) error {
-	if keyName == "" {
-		return errors.New("key name may not be empty")
-	}
-
-	if keyName == "default" {
-		return errors.New("`default' is not a legal key name")
-	}
-	// Need to be restrictive with key names because they're used as part of a Git filter name
-	for i := 0; i < len(keyName); i++ {
-		ch := byte(keyName[i])
-		if ch >= 'a' && ch <= 'z' {
-			continue
-		}
-		if ch >= 'A' && ch <= 'Z' {
-			continue
-		}
-		if ch >= '0' && ch <= '9' {
-			continue
-		}
-		if ch == '-' || ch == '_' {
-			continue
-		}
-		return errors.New("Key names may contain only A-Z, a-z, 0-9, '-', and '_'")
-	}
-
-	if len(keyName) > keyNameMaxLength {
-		return errors.New("key name is too long")
 	}
 	return nil
 }
@@ -226,7 +211,6 @@ func (k KeyEntry) Store(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	//err = out.write(reinterpret_cast<const char*>(aes_key), AES_KEY_LEN);
 
 	// HMAC key
 	err = writeBigEndianUint32(out, keyFieldHmacKey)
@@ -237,7 +221,6 @@ func (k KeyEntry) Store(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	//err = out.write(reinterpret_cast<const char*>(hmac_key), HMAC_KEY_LEN);
 
 	// End
 	err = writeBigEndianUint32(out, keyFieldEnd)
@@ -308,10 +291,34 @@ func (k *KeyEntry) Load(in io.Reader) error {
 	return nil
 }
 
-func randomBytes(length uint32) []byte {
-	out := make([]byte, length)
-	for i := 0; i < int(length); i++ {
-		out[i] = byte(rand.Intn(255))
+func validateKeyName(keyName string) error {
+	if keyName == "" {
+		return errors.New("key name may not be empty")
 	}
-	return out
+
+	if keyName == "default" {
+		return errors.New("`default' is not a legal key name")
+	}
+	// Need to be restrictive with key names because they're used as part of a Git filter name
+	for i := 0; i < len(keyName); i++ {
+		ch := byte(keyName[i])
+		if ch >= 'a' && ch <= 'z' {
+			continue
+		}
+		if ch >= 'A' && ch <= 'Z' {
+			continue
+		}
+		if ch >= '0' && ch <= '9' {
+			continue
+		}
+		if ch == '-' || ch == '_' {
+			continue
+		}
+		return errors.New("Key names may contain only A-Z, a-z, 0-9, '-', and '_'")
+	}
+
+	if len(keyName) > keyNameMaxLength {
+		return errors.New("key name is too long")
+	}
+	return nil
 }
