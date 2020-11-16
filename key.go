@@ -187,6 +187,7 @@ type KeyEntry struct {
 	HmacKey []byte
 }
 
+// Store implements writing a Key
 // TODO: FIXME: XXX: FINISH IMPLEMENT
 func (k KeyEntry) Store(out io.Writer) error {
 	err := writeBigEndianUint32(out, keyFieldVersion)

@@ -6,6 +6,7 @@ import (
 	"io"
 )
 
+// AesCtrEncryptor represents an AES encryptor/decryptor
 type AesCtrEncryptor struct {
 	ctrValue    []byte // Current CTR value (used as input to AES to derive pad)
 	pad         []byte // Current encryption pad (output of AES)
@@ -13,6 +14,7 @@ type AesCtrEncryptor struct {
 	key         []byte
 }
 
+// NewAesCtrEncryptor creates a new AesCtrEncryptor instance with a key and nonce
 func NewAesCtrEncryptor(rawKey []byte, nonce []byte) AesCtrEncryptor {
 	obj := AesCtrEncryptor{}
 	obj.ctrValue = make([]byte, aesEncryptorBlockLen)
@@ -58,7 +60,7 @@ func (a *AesCtrEncryptor) process(in []byte, out []byte, len uint32) error {
 		out[i] = in[i] ^ a.pad[a.byteCounter%aesEncryptorBlockLen]
 
 		if a.byteCounter == 0 {
-			return fmt.Errorf("Aes_ctr_encryptor::process", "Too much data to encrypt securely")
+			return fmt.Errorf("Aes_ctr_encryptor::process - Too much data to encrypt securely")
 		}
 	}
 	return nil

@@ -1,2 +1,4 @@
 go.sum
 *~
+decrypt_test.go
+testdata/repo

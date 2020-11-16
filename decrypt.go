@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
+	"github.com/jbuchbinder/go-git-crypt/gpg"
 	"golang.org/x/crypto/openpgp"
 )
 
@@ -35,8 +37,14 @@ func Decrypt(key []byte, data []byte) ([]byte, error) {
 	return out, nil
 }
 
-func decryptRepoKey(gpgkey openpgp.Entity, keyFile Key, keyName string, keyVersion uint32, secretKeys []string, keysPath string) error {
+// decryptRepoKey decrypts a repository key, given:
+//   - keyring: A GPG keyring to use for the decryption.
+//   - keyName: Name of the key set being used. Empty defaults to "default".
+//   - keyVersion: Version of the git-crypt keys.
+//   - secretKeys: Array of private keys to attempt to decrypt
+func decryptRepoKey(keyring openpgp.EntityList, keyName string, keyVersion uint32, secretKeys []string, keysPath string) (Key, error) {
 	//var err error
+	keyFile := Key{}
 
 	for _, seckey := range secretKeys {
 		path := keysPath + string(os.PathSeparator)
@@ -48,12 +56,16 @@ func decryptRepoKey(gpgkey openpgp.Entity, keyFile Key, keyName string, keyVersi
 		path += string(os.PathSeparator) + fmt.Sprintf("%d", keyVersion) + string(os.PathSeparator) + seckey + ".gpg"
 
 		if fileExists(path) {
-			decryptedContents, err := gpgDecryptFromFile(gpgkey, path)
-			if err != nil {
-				return err
-			}
-			if len(decryptedContents) > 0 {
+			log.Printf("Decrypting key %v in path %s", keyring, path)
 
+			decryptedContents, err := gpgDecryptFromFile(keyring, path)
+			if err != nil {
+				log.Printf("decryption of file %s : %s", path, err.Error())
+				continue
+			}
+			if len(decryptedContents) == 0 {
+				log.Printf("")
+				continue
 			}
 
 			var thisVersionKeyFile Key
@@ -61,34 +73,35 @@ func decryptRepoKey(gpgkey openpgp.Entity, keyFile Key, keyName string, keyVersi
 			err = thisVersionKeyFile.Load(br)
 			thisVersionEntry, err := thisVersionKeyFile.Get(keyVersion)
 			if err != nil {
-				return fmt.Errorf("GPG-encrypted keyfile is malformed because it does not contain expected key version")
+				return keyFile, fmt.Errorf("GPG-encrypted keyfile is malformed because it does not contain expected key version")
 
 			}
 			if strings.Compare(keyName, thisVersionKeyFile.KeyName) != 0 {
-				return fmt.Errorf("GPG-encrypted keyfile is malformed because it does not contain expected key name")
+				return keyFile, fmt.Errorf("GPG-encrypted keyfile is malformed because it does not contain expected key name")
 
 			}
 			keyFile.Entries = append(keyFile.Entries, thisVersionEntry)
-			return nil
+			return keyFile, nil
 		}
 	}
 
-	return errors.New("no secret keys")
+	return keyFile, errors.New("no secret keys")
 }
 
-func decryptRepoKeys(gpgkey openpgp.Entity, keyFiles []Key, keyVersion uint32, secretKeys []string, keysPath string) error {
+func decryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys []string, keysPath string) ([]Key, error) {
 	successful := false
 	dirents := make([]string, 0)
+	keyFiles := make([]Key, 0)
 
 	if fileExists(keysPath) {
 		fp, err := os.Open(keysPath)
 		if err != nil {
-			return err
+			return keyFiles, err
 		}
 		defer fp.Close()
 		entries, err := fp.ReadDir(0)
 		if err != nil {
-			return err
+			return keyFiles, err
 		}
 		for _, entry := range entries {
 			dirents = append(dirents, entry.Name())
@@ -96,6 +109,7 @@ func decryptRepoKeys(gpgkey openpgp.Entity, keyFiles []Key, keyVersion uint32, s
 	}
 
 	for _, dirent := range dirents {
+		log.Printf("decryptRepoKeys : %s", dirent)
 		keyName := ""
 		if strings.Compare(dirent, "default") != 0 {
 			if err := validateKeyName(dirent); err != nil {
@@ -104,16 +118,16 @@ func decryptRepoKeys(gpgkey openpgp.Entity, keyFiles []Key, keyVersion uint32, s
 			keyName = dirent
 		}
 
-		var keyFile Key
-		if err := decryptRepoKey(gpgkey, keyFile, keyName, keyVersion, secretKeys, keysPath); err == nil {
+		keyFile, err := decryptRepoKey(keyring, keyName, keyVersion, secretKeys, keysPath)
+		if err == nil {
 			keyFiles = append(keyFiles, keyFile)
 			successful = true
 		}
 	}
 	if !successful {
-		return fmt.Errorf("unsuccessful")
+		return keyFiles, fmt.Errorf("unsuccessful")
 	}
-	return nil
+	return keyFiles, nil
 }
 
 func decryptFileToStdout(keyFile Key, header []byte, in io.Reader) error {
@@ -155,11 +169,15 @@ func decryptFileToStdout(keyFile Key, header []byte, in io.Reader) error {
 	return nil
 }
 
-func gpgDecryptFromFile(gpgkey openpgp.Entity, path string) ([]byte, error) {
+func gpgDecryptFromFile(keyring openpgp.EntityList, path string) ([]byte, error) {
 	filedata, err := ioutil.ReadFile(path)
 	if err != nil {
+		log.Printf("gpgDecryptFromFile(%#v, %s): %s", keyring, path, err.Error())
 		return []byte{}, err
 	}
-	out, err := gpgDecrypt(filedata, openpgp.EntityList{&gpgkey})
+	out, err := gpg.Decrypt(filedata, keyring)
+	if err != nil {
+		log.Printf("gpgDecryptFromFile(%#v, %s) : %s", keyring, path, err.Error())
+	}
 	return out, err
 }
