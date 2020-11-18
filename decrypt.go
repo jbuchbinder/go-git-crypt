@@ -130,8 +130,20 @@ func decryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys [
 	return keyFiles, nil
 }
 
+func readFileHeader(filename string) ([]byte, error) {
+	header := make([]byte, 10+aesEncryptorNonceLen)
+	fp, err := os.Open(filename)
+	if err != nil {
+		return header, err
+	}
+	defer fp.Close()
+	n, err := fp.Read(header)
+	log.Printf("readFileHeader : read %d bytes", n)
+	return header, err
+}
+
 func decryptFileToStdout(keyFile Key, header []byte, in io.Reader) error {
-	nonce := header[:10]
+	nonce := header[10:]
 	var keyVersion uint32 = 0 // TODO: get the version from the file header
 
 	key, err := keyFile.Get(keyVersion)
@@ -141,6 +153,7 @@ func decryptFileToStdout(keyFile Key, header []byte, in io.Reader) error {
 
 	aes := NewAesCtrEncryptor(key.AesKey, nonce)
 	//Hmac_sha1_state         hmac(key->hmac_key, HMAC_KEY_LEN);
+	h := NewHMac(key.HmacKey)
 	for {
 		ibuf := make([]byte, 1024)
 		obuf := make([]byte, 1024)
@@ -152,13 +165,13 @@ func decryptFileToStdout(keyFile Key, header []byte, in io.Reader) error {
 		if err != nil {
 			return err
 		}
-		//hmac.add(buffer, in.gcount());
+		h.Write(obuf)
 		fmt.Printf("%s", string(obuf))
 	}
 
-	//unsigned char           digest[Hmac_sha1_state::LEN];
 	//digest := make([]byte, hmacSha1StateLen)
-	//hmac.get(digest);
+	digest := h.Result()
+	log.Printf("digest = %#v", digest)
 	//if (!leakless_equals(digest, nonce, Aes_ctr_decryptor::NONCE_LEN)) {
 	//return fmt.Errorf("git-crypt: error: encrypted file has been tampered with!")
 	// Although we've already written the tampered file to stdout, exiting
