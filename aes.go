@@ -2,6 +2,7 @@ package gitcrypt
 
 import (
 	"crypto/aes"
+	"encoding/binary"
 	"fmt"
 	"io"
 )
@@ -39,25 +40,37 @@ Aes_ctr_encryptor::~Aes_ctr_encryptor ()
 
 func (a *AesCtrEncryptor) process(in []byte, out []byte, len uint32) error {
 	var i uint32
+	//log.Printf("process for length = %d", len)
 	for i = 0; i < len; i++ {
 		if a.byteCounter%aesEncryptorBlockLen == 0 {
+			//log.Printf("a.byteCounter = %d, aesEncryptorBlockLen = %d", a.byteCounter, aesEncryptorBlockLen)
 			// Set last 4 bytes of CTR to the (big-endian) block number (sequentially increasing with each block)
 			tmp := make([]byte, 4)
-			storeBigEndian32(tmp, a.byteCounter/aesEncryptorBlockLen)
+			binary.BigEndian.PutUint32(tmp, a.byteCounter/aesEncryptorBlockLen)
+			//log.Printf("tmp = %#v, bytecounter = %d, blockLen = %d", tmp, a.byteCounter, aesEncryptorBlockLen)
+			//store_be32(ctr_value + NONCE_LEN, byte_counter / BLOCK_LEN)
+			//log.Printf("last four bytes of CTR : %x", tmp)
 			for i := 0; i < 4; i++ {
 				a.ctrValue[aesEncryptorNonceLen+i] = tmp[i]
 			}
+			//log.Printf("ctrValue = %#v", a.ctrValue)
+
 			// Generate a new pad
 			c, err := aes.NewCipher(a.key)
 			if err != nil {
 				return err
 			}
-			c.Encrypt(a.ctrValue, a.pad)
+			c.Encrypt(a.pad, a.ctrValue)
+			//c.Decrypt(a.ctrValue, a.pad)
+			//c.Encrypt(a.ctrValue, a.pad)
+
+			//log.Printf("pad = %x", a.pad)
 		}
 
 		// encrypt one byte
-		a.byteCounter++
 		out[i] = in[i] ^ a.pad[a.byteCounter%aesEncryptorBlockLen]
+		a.byteCounter++
+		//log.Printf("pos %d, in = %x, out = %x, pad = %x", i, in[i], out[i], a.pad[a.byteCounter%aesEncryptorBlockLen])
 
 		if a.byteCounter == 0 {
 			return fmt.Errorf("Aes_ctr_encryptor::process - Too much data to encrypt securely")

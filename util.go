@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"os"
 )
@@ -27,30 +26,22 @@ func readBigEndianUint32(in io.Reader) (uint32, error) {
 	if n != 4 {
 		return 0, errors.New("unable to read 4 bytes")
 	}
-	log.Printf("readBigEndianUint32 : %#v", data)
+	//log.Printf("readBigEndianUint32 : %#v", data)
 	return uint32(data[0])<<24 + uint32(data[1])<<16 + uint32(data[2])<<8 + uint32(data[3]), nil
 }
 
-func storeBigEndian32(p []byte, i uint32) {
-	buf := make([]byte, 4)
-	buf[3] = byte(i)
-	i = i >> 8
-	buf[2] = byte(i)
-	i = i >> 8
-	buf[1] = byte(i)
-	i = i >> 8
-	buf[0] = byte(i)
-	p = append(p, buf...)
-}
+//func storeBigEndian32(p []byte, i uint32) {
+//	binary.BigEndian.PutUint32(p, i)
+//}
 
 func writeBigEndianUint32(out io.Writer, val uint32) error {
 	data := make([]byte, 4)
 
 	data[0] = byte(val >> 24)
-	data[0] = byte(val >> 16)
-	data[0] = byte(val >> 8)
-	data[0] = byte(val % 256)
-	log.Printf("writeBigEndianUint32 : %#v", data)
+	data[1] = byte(val >> 16)
+	data[2] = byte(val >> 8)
+	data[3] = byte(val % 256)
+	//log.Printf("writeBigEndianUint32 : %#v", data)
 
 	n, err := out.Write(data)
 	if err != nil {
@@ -89,4 +80,20 @@ func randomBytes(length uint32) []byte {
 		out[i] = byte(rand.Intn(255))
 	}
 	return out
+}
+
+func leaklessEquals(a []byte, b []byte, len int) bool {
+	diff := 0
+
+	pos := 0
+	for {
+		if len <= 0 {
+			break
+		}
+		diff |= int(a[pos] ^ b[pos])
+		len--
+		pos++
+	}
+
+	return diff == 0
 }

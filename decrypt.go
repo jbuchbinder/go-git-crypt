@@ -42,6 +42,7 @@ func Decrypt(key []byte, data []byte) ([]byte, error) {
 //   - keyName: Name of the key set being used. Empty defaults to "default".
 //   - keyVersion: Version of the git-crypt keys.
 //   - secretKeys: Array of private keys to attempt to decrypt
+//   - keysPath: Root path to the repository key directory (should be $REPOPATH/.git-crypt/keys)
 func decryptRepoKey(keyring openpgp.EntityList, keyName string, keyVersion uint32, secretKeys []string, keysPath string) (Key, error) {
 	//var err error
 	keyFile := Key{}
@@ -109,7 +110,7 @@ func decryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys [
 	}
 
 	for _, dirent := range dirents {
-		log.Printf("decryptRepoKeys : %s", dirent)
+		//log.Printf("decryptRepoKeys : %s", dirent)
 		keyName := ""
 		if strings.Compare(dirent, "default") != 0 {
 			if err := validateKeyName(dirent); err != nil {
@@ -137,14 +138,16 @@ func readFileHeader(filename string) ([]byte, error) {
 		return header, err
 	}
 	defer fp.Close()
-	n, err := fp.Read(header)
-	log.Printf("readFileHeader : read %d bytes", n)
+	_, err = fp.Read(header)
+	//log.Printf("readFileHeader : read %d bytes : %s", n, header)
 	return header, err
 }
 
-func decryptFileToStdout(keyFile Key, header []byte, in io.Reader) error {
+func decryptStream(keyFile Key, header []byte, in io.Reader, out io.Writer) error {
+	//log.Printf("header: %#v", header)
 	nonce := header[10:]
-	var keyVersion uint32 = 0 // TODO: get the version from the file header
+	//log.Printf("nonce: %#v", nonce)
+	keyVersion := keyFile.Version
 
 	key, err := keyFile.Get(keyVersion)
 	if err != nil {
@@ -152,32 +155,38 @@ func decryptFileToStdout(keyFile Key, header []byte, in io.Reader) error {
 	}
 
 	aes := NewAesCtrEncryptor(key.AesKey, nonce)
-	//Hmac_sha1_state         hmac(key->hmac_key, HMAC_KEY_LEN);
 	h := NewHMac(key.HmacKey)
+	counter := 0
 	for {
 		ibuf := make([]byte, 1024)
 		obuf := make([]byte, 1024)
 		n, err := in.Read(ibuf)
 		if err != nil {
+			//log.Printf("ERR: %s", err.Error())
 			break
 		}
+		//log.Printf("size = %d, ibuf = %x", n, ibuf)
 		err = aes.process(ibuf, obuf, uint32(n))
 		if err != nil {
 			return err
 		}
+		//log.Printf("input : %x", string(ibuf))
+		//log.Printf("output : %x", string(obuf))
+
+		out.Write(obuf)
 		h.Write(obuf)
-		fmt.Printf("%s", string(obuf))
+
+		counter++
 	}
 
-	//digest := make([]byte, hmacSha1StateLen)
 	digest := h.Result()
-	log.Printf("digest = %#v", digest)
-	//if (!leakless_equals(digest, nonce, Aes_ctr_decryptor::NONCE_LEN)) {
-	//return fmt.Errorf("git-crypt: error: encrypted file has been tampered with!")
-	// Although we've already written the tampered file to stdout, exiting
-	// with a non-zero status will tell git the file has not been filtered,
-	// so git will not replace it.
-	//}
+	//log.Printf("digest = %#v", digest)
+	if !leaklessEquals(digest, nonce, aesEncryptorNonceLen) {
+		return fmt.Errorf("git-crypt: error: encrypted file has been tampered with")
+		// Although we've already written the tampered file to stdout, exiting
+		// with a non-zero status will tell git the file has not been filtered,
+		// so git will not replace it.
+	}
 
 	return nil
 }

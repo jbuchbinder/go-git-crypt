@@ -73,7 +73,7 @@ func (k *Key) Load(in io.Reader) error {
 	}
 	k.Version = format
 	if k.Debug {
-		log.Printf("format: %d", format)
+		log.Printf("format: %x", format)
 	}
 	err = k.loadHeader(in)
 	if err != nil {
