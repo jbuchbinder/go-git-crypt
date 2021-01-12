@@ -143,6 +143,35 @@ func readFileHeader(filename string) ([]byte, error) {
 	return header, err
 }
 
+// IsGitCrypted returns whether or not a file has been encrypted in
+// the git-crypt encryption format
+func IsGitCrypted(fn string) bool {
+	_, err := os.Stat(fn)
+	if err != nil {
+		// If we can't open the file, skip git-crypting
+		log.Printf("ERR: %s", err.Error())
+		return false
+	}
+	fp, err := os.Open(fn)
+	if err != nil {
+		// If we can't open the file, skip git-crypting
+		log.Printf("ERR: %s", err.Error())
+		return false
+	}
+	defer fp.Close()
+	b := make([]byte, 10)
+	n, err := fp.ReadAt(b, 0)
+	if err != nil {
+		log.Printf("ERR: %s", err.Error())
+		return false
+	}
+	if n < 10 {
+		log.Printf("ERR: only read %d bytes", n)
+		return false
+	}
+	return bytes.Compare(b[0:9], []byte{0, 'G', 'I', 'T', 'C', 'R', 'Y', 'P', 'T'}) == 0
+}
+
 // DecryptStream decrypts a stream of encrypted git-crypt format data
 // given a key file and header
 func DecryptStream(keyFile Key, header []byte, in io.Reader, out io.Writer) error {
