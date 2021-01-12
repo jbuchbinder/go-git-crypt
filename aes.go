@@ -61,8 +61,6 @@ func (a *AesCtrEncryptor) process(in []byte, out []byte, len uint32) error {
 				return err
 			}
 			c.Encrypt(a.pad, a.ctrValue)
-			//c.Decrypt(a.ctrValue, a.pad)
-			//c.Encrypt(a.ctrValue, a.pad)
 
 			//log.Printf("pad = %x", a.pad)
 		}

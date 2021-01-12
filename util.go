@@ -84,14 +84,14 @@ func randomBytes(length uint32) []byte {
 
 func leaklessEquals(a []byte, b []byte, len int) bool {
 	diff := 0
-
+	l := len
 	pos := 0
 	for {
-		if len <= 0 {
+		if l <= 0 {
 			break
 		}
 		diff |= int(a[pos] ^ b[pos])
-		len--
+		l--
 		pos++
 	}
 
