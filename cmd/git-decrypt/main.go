@@ -79,10 +79,15 @@ func main() {
 
 				err = ioutil.WriteFile(path+".decrypted", bytes.Trim(buf.Bytes(), "\x00"), 0600)
 				if err != nil {
-					log.Printf("ERR: %s", err.Error())
+					log.Printf("ERR: ioutil.WriteFile(%s): %s", path+".decrypted", err.Error())
 				}
 
-				log.Printf("Decrypted : %s", string(buf.Bytes()))
+				err = os.Rename(path+".decrypted", path)
+				if err != nil {
+					log.Printf("ERR: os.Rename(%s, %s): %s", path+".decrypted", path, err.Error())
+				}
+
+				log.Printf("%s: Decrypted %d bytes", path, len(buf.Bytes()))
 			}
 		}
 		//log.Printf("path = %s, d = %#v", path, d)
