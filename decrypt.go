@@ -17,7 +17,7 @@ import (
 /*
 // Decrypt decrypts a git-crypt encrypted file, given a key and a data
 // stream
-func Decrypt(key []byte, data []byte) ([]byte, error) {
+func (g *GitCrypt) Decrypt(key []byte, data []byte) ([]byte, error) {
 	var out []byte
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -42,7 +42,7 @@ func Decrypt(key []byte, data []byte) ([]byte, error) {
 //   - keyVersion: Version of the git-crypt keys.
 //   - secretKeys: Array of private keys to attempt to decrypt
 //   - keysPath: Root path to the repository key directory (should be $REPOPATH/.git-crypt/keys)
-func DecryptRepoKey(keyring openpgp.EntityList, keyName string, keyVersion uint32, secretKeys []string, keysPath string) (Key, error) {
+func (g *GitCrypt) DecryptRepoKey(keyring openpgp.EntityList, keyName string, keyVersion uint32, secretKeys []string, keysPath string) (Key, error) {
 	//var err error
 	keyFile := Key{}
 
@@ -58,7 +58,7 @@ func DecryptRepoKey(keyring openpgp.EntityList, keyName string, keyVersion uint3
 		if fileExists(path) {
 			log.Printf("Decrypting key %v in path %s", keyring, path)
 
-			decryptedContents, err := GpgDecryptFromFile(keyring, path)
+			decryptedContents, err := g.GpgDecryptFromFile(keyring, path)
 			if err != nil {
 				log.Printf("decryption of file %s : %s", path, err.Error())
 				continue
@@ -89,7 +89,7 @@ func DecryptRepoKey(keyring openpgp.EntityList, keyName string, keyVersion uint3
 }
 
 // DecryptRepoKeys decrypts all available repository keys, given a GPG key
-func DecryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys []string, keysPath string) ([]Key, error) {
+func (g *GitCrypt) DecryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys []string, keysPath string) ([]Key, error) {
 	successful := false
 	dirents := make([]string, 0)
 	keyFiles := make([]Key, 0)
@@ -110,7 +110,7 @@ func DecryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys [
 	}
 
 	for _, dirent := range dirents {
-		//log.Printf("decryptRepoKeys : %s", dirent)
+		log.Printf("decryptRepoKeys : %s", dirent)
 		keyName := ""
 		if strings.Compare(dirent, "default") != 0 {
 			if err := validateKeyName(dirent); err != nil {
@@ -119,7 +119,7 @@ func DecryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys [
 			keyName = dirent
 		}
 
-		keyFile, err := DecryptRepoKey(keyring, keyName, keyVersion, secretKeys, keysPath)
+		keyFile, err := g.DecryptRepoKey(keyring, keyName, keyVersion, secretKeys, keysPath)
 		if err == nil {
 			keyFiles = append(keyFiles, keyFile)
 			successful = true
@@ -131,7 +131,8 @@ func DecryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32, secretKeys [
 	return keyFiles, nil
 }
 
-func readFileHeader(filename string) ([]byte, error) {
+// ReadFileHeader fetches the git-crypt file header
+func (g *GitCrypt) ReadFileHeader(filename string) ([]byte, error) {
 	header := make([]byte, 10+aesEncryptorNonceLen)
 	fp, err := os.Open(filename)
 	if err != nil {
@@ -145,7 +146,7 @@ func readFileHeader(filename string) ([]byte, error) {
 
 // IsGitCrypted returns whether or not a file has been encrypted in
 // the git-crypt encryption format
-func IsGitCrypted(fn string) bool {
+func (g *GitCrypt) IsGitCrypted(fn string) bool {
 	_, err := os.Stat(fn)
 	if err != nil {
 		// If we can't open the file, skip git-crypting
@@ -174,10 +175,14 @@ func IsGitCrypted(fn string) bool {
 
 // DecryptStream decrypts a stream of encrypted git-crypt format data
 // given a key file and header
-func DecryptStream(keyFile Key, header []byte, in io.Reader, out io.Writer) error {
-	//log.Printf("header: %#v", header)
+func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.Reader, out io.Writer) error {
+	if g.Debug {
+		log.Printf("header: %#v", header)
+	}
 	nonce := header[10:]
-	//log.Printf("nonce: %#v", nonce)
+	if g.Debug {
+		log.Printf("nonce: %#v", nonce)
+	}
 	keyVersion := keyFile.Version
 
 	key, err := keyFile.Get(keyVersion)
@@ -196,13 +201,17 @@ func DecryptStream(keyFile Key, header []byte, in io.Reader, out io.Writer) erro
 			//log.Printf("ERR: %s", err.Error())
 			break
 		}
-		//log.Printf("size = %d, ibuf = %x", n, ibuf)
+		if g.Debug {
+			log.Printf("size = %d, ibuf = %x", n, ibuf)
+		}
 		err = aes.process(ibuf, obuf, uint32(n))
 		if err != nil {
 			return err
 		}
-		//log.Printf("input : %x", string(ibuf))
-		//log.Printf("output : %x", string(obuf))
+		if g.Debug {
+			log.Printf("input : %x", string(ibuf))
+			log.Printf("output : %x", string(obuf))
+		}
 
 		out.Write(obuf)
 		h.Write(obuf)
@@ -228,15 +237,15 @@ func DecryptStream(keyFile Key, header []byte, in io.Reader, out io.Writer) erro
 }
 
 // GpgDecryptFromFile decrypts a file using a PGP/GPG key
-func GpgDecryptFromFile(keyring openpgp.EntityList, path string) ([]byte, error) {
+func (g *GitCrypt) GpgDecryptFromFile(keyring openpgp.EntityList, path string) ([]byte, error) {
 	filedata, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Printf("GpgDecryptFromFile(%#v, %s): %s", keyring, path, err.Error())
+		log.Printf("GpgDecryptFromFile(%#v, %s): ERR: %s", keyring, path, err.Error())
 		return []byte{}, err
 	}
 	out, err := gpg.Decrypt(filedata, keyring)
 	if err != nil {
-		log.Printf("GpgDecryptFromFile(%#v, %s) : %s", keyring, path, err.Error())
+		log.Printf("GpgDecryptFromFile(%#v, %s): ERR: %s", keyring, path, err.Error())
 	}
 	return out, err
 }

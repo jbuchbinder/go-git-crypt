@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"flag"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -36,9 +37,11 @@ func main() {
 		panic("unable to ingest GPG key")
 	}
 
+	g := gitcrypt.GitCrypt{}
+
 	keyring := openpgp.EntityList{keydata}
 	keysPath := *path + string(os.PathSeparator) + ".git-crypt" + string(os.PathSeparator) + "keys"
-	keys, err := gitcrypt.DecryptRepoKeys(keyring, uint32(0), listKeys(keysPath), keysPath)
+	keys, err := g.DecryptRepoKeys(keyring, uint32(0), listKeys(keysPath), keysPath)
 	if err != nil {
 		panic(err)
 	}
@@ -51,9 +54,9 @@ func main() {
 			return nil
 		}
 		if !d.IsDir() {
-			if gitcrypt.IsGitCrypted(path) {
+			if g.IsGitCrypted(path) {
 				log.Printf("GIT-CRYPTED: %s", path)
-				header, err := gitcrypt.ReadFileHeader(path)
+				header, err := g.ReadFileHeader(path)
 				if err != nil {
 					return err
 				}
@@ -68,11 +71,16 @@ func main() {
 				ignore := make([]byte, len(header))
 				in.Read(ignore)
 
-				err = gitcrypt.DecryptStream(keys[0], header, in, out)
+				err = g.DecryptStream(keys[0], header, in, out)
 				if err != nil {
 					return err
 				}
 				out.Flush()
+
+				err = ioutil.WriteFile(path+".decrypted", bytes.Trim(buf.Bytes(), "\x00"), 0600)
+				if err != nil {
+					log.Printf("ERR: %s", err.Error())
+				}
 
 				log.Printf("Decrypted : %s", string(buf.Bytes()))
 			}

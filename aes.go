@@ -5,10 +5,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 )
 
 // AesCtrEncryptor represents an AES encryptor/decryptor
 type AesCtrEncryptor struct {
+	// Debug represents whether debug logging is turned on or not
+	Debug bool
+
 	ctrValue    []byte // Current CTR value (used as input to AES to derive pad)
 	pad         []byte // Current encryption pad (output of AES)
 	byteCounter uint32 // How many bytes processed so far?
@@ -47,9 +51,13 @@ func (a *AesCtrEncryptor) process(in []byte, out []byte, len uint32) error {
 			// Set last 4 bytes of CTR to the (big-endian) block number (sequentially increasing with each block)
 			tmp := make([]byte, 4)
 			binary.BigEndian.PutUint32(tmp, a.byteCounter/aesEncryptorBlockLen)
-			//log.Printf("tmp = %#v, bytecounter = %d, blockLen = %d", tmp, a.byteCounter, aesEncryptorBlockLen)
+			if a.Debug {
+				log.Printf("tmp = %#v, bytecounter = %d, blockLen = %d", tmp, a.byteCounter, aesEncryptorBlockLen)
+			}
 			//store_be32(ctr_value + NONCE_LEN, byte_counter / BLOCK_LEN)
-			//log.Printf("last four bytes of CTR : %x", tmp)
+			if a.Debug {
+				log.Printf("last four bytes of CTR : %x", tmp)
+			}
 			for i := 0; i < 4; i++ {
 				a.ctrValue[aesEncryptorNonceLen+i] = tmp[i]
 			}
