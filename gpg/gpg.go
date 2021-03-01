@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
+// Decrypt decrypts an input byte array with keys in secretkeyring
 func Decrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 	log.Printf("gpg.Decrypt(%d bytes)", len(in))
 
@@ -37,18 +38,22 @@ func Decrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 	return ioutil.ReadAll(md.UnverifiedBody)
 }
 
+// Encrypt encrypts an input byte array using an opengpg.EntityList
+// and a specific key identifier. It can optionally read a file containing
+// keys if specified in masterKeyFilePath. It returns encrypted data
+// or an error if one is encountered.
 func Encrypt(in []byte, publicKeyring openpgp.EntityList, id string, masterKeyFilePath string) ([]byte, error) {
 	log.Printf("gpg.Encrypt(%d bytes, key %s)", len(in), id)
 
-	myId := id
-	if myId == "" && len(publicKeyring) > 0 {
-		myId = EntityId(publicKeyring[0])
-		log.Printf("gpg.Encrypt(): Autodetected entity id %s", myId)
+	myID := id
+	if myID == "" && len(publicKeyring) > 0 {
+		myID = EntityID(publicKeyring[0])
+		log.Printf("gpg.Encrypt(): Autodetected entity id %s", myID)
 	}
 
-	key := getKeyById(publicKeyring, myId)
+	key := getKeyByID(publicKeyring, myID)
 	if key == nil {
-		return []byte{}, errors.New("gpg.Encrypt(): Unable to locate key " + myId)
+		return []byte{}, errors.New("gpg.Encrypt(): Unable to locate key " + myID)
 	}
 
 	var el openpgp.EntityList
@@ -67,7 +72,7 @@ func Encrypt(in []byte, publicKeyring openpgp.EntityList, id string, masterKeyFi
 				log.Printf("gpg.Encrypt(): Unable to ingest master GPG key: %s", err.Error())
 				el = openpgp.EntityList{key}
 			} else {
-				log.Printf("gpg.Encrypt(): Encrypting data with key %s and master key", EntityId(key))
+				log.Printf("gpg.Encrypt(): Encrypting data with key %s and master key", EntityID(key))
 				el = openpgp.EntityList{key, masterkey}
 			}
 		}
@@ -90,6 +95,8 @@ func Encrypt(in []byte, publicKeyring openpgp.EntityList, id string, masterKeyFi
 	return ioutil.ReadAll(buf)
 }
 
+// RawKeyData is a convenience type for []byte, used for ingesting raw GPG
+// key data.
 type RawKeyData []byte
 
 // ArmoredKeyIngest extracts a single entity, public or private, from an array
@@ -113,6 +120,9 @@ func ArmoredKeyIngest(input RawKeyData) (*openpgp.Entity, error) {
 	}
 }
 
+// KeyArrayToEntityList converts an array of armored GPG key data into an
+// opengpg.EntityList, throwing errors if no keys are found or errors are
+// encountered during the ingest process.
 func KeyArrayToEntityList(ka []RawKeyData) (openpgp.EntityList, error) {
 	el := make([]*openpgp.Entity, 0)
 	for _, k := range ka {
@@ -129,14 +139,14 @@ func KeyArrayToEntityList(ka []RawKeyData) (openpgp.EntityList, error) {
 	return openpgp.EntityList(el), nil
 }
 
-// EntityId extracts the short name string for the ID for an entity.
-func EntityId(e *openpgp.Entity) string {
+// EntityID extracts the short name string for the ID for an entity.
+func EntityID(e *openpgp.Entity) string {
 	return e.PrimaryKey.KeyIdShortString()
 }
 
-func getKeyById(keyring openpgp.EntityList, id string) *openpgp.Entity {
+func getKeyByID(keyring openpgp.EntityList, id string) *openpgp.Entity {
 	for _, entity := range keyring {
-		if EntityId(entity) == id {
+		if EntityID(entity) == id {
 			return entity
 		}
 	}
