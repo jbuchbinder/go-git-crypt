@@ -6,3 +6,5 @@
 
 A Go-flavored attempt to reimplement the git-crypt algorithm in native Go. Primary focus is on providing decryption and key-handling functionality.
 
+_WARNING: Until version 0.1 is tagged, the API is subject to arbitrary change._
+
