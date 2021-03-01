@@ -69,7 +69,7 @@ func (k *Key) Load(in io.Reader) error {
 		return err
 	}
 	if format != formatVersion {
-		return fmt.Errorf("uncompatible version %d", format)
+		return fmt.Errorf("incompatible version %d", format)
 	}
 	k.Version = format
 	if k.Debug {
@@ -118,7 +118,7 @@ func (k Key) Store(out io.Writer) error {
 			return err
 		}
 	}
-	err = writeBigEndianUint32(out, headerFieldEnd)
+	_ = writeBigEndianUint32(out, headerFieldEnd)
 	for _, e := range k.Entries {
 		err = k.Store(out)
 		if err != nil {
@@ -157,6 +157,10 @@ func (k *Key) loadHeader(in io.Reader) error {
 				k.KeyName = ""
 			} else {
 				raw, err := readXBytes(in, int(fieldLen))
+				if err != nil {
+					k.KeyName = ""
+					return errors.New("malformed")
+				}
 				k.KeyName = string(raw)
 				err = validateKeyName(k.KeyName)
 				if err != nil {

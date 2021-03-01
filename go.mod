@@ -1,6 +1,6 @@
 module github.com/jbuchbinder/go-git-crypt
 
-go 1.15
+go 1.16
 
 replace github.com/jbuchbinder/go-git-crypt/gpg => ./gpg
 
