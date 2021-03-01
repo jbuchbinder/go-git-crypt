@@ -68,8 +68,8 @@ func main() {
 				var buf bytes.Buffer
 				out := bufio.NewWriter(&buf)
 
-				ignore := make([]byte, len(header))
-				in.Read(ignore)
+				//ignore := make([]byte, len(header))
+				//in.Read(ignore)
 
 				err = g.DecryptStream(keys[0], header, in, out)
 				if err != nil {

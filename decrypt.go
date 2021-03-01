@@ -190,6 +190,13 @@ func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.Reader, out i
 		return fmt.Errorf("git-crypt: error: key version %d not available - please unlock with the latest version of the key", keyVersion)
 	}
 
+	// Skip past the header before we begin calculations
+	ignore := make([]byte, len(header))
+	_, err = in.Read(ignore)
+	if err != nil {
+		return fmt.Errorf("git-crypt: unable to read header: %s", err.Error())
+	}
+
 	aes := NewAesCtrEncryptor(key.AesKey, nonce)
 	h := NewHMac(key.HmacKey)
 	counter := 0
