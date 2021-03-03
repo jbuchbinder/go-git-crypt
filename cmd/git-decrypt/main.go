@@ -19,6 +19,7 @@ import (
 var (
 	path   = flag.String("path", "", "Path to repository base")
 	gpgkey = flag.String("key", "", "GPG key file")
+	debug  = flag.Bool("debug", false, "Debug")
 )
 
 func main() {
@@ -37,7 +38,7 @@ func main() {
 		panic("unable to ingest GPG key")
 	}
 
-	g := gitcrypt.GitCrypt{}
+	g := gitcrypt.GitCrypt{Debug: *debug}
 
 	keyring := openpgp.EntityList{keydata}
 	keysPath := *path + string(os.PathSeparator) + ".git-crypt" + string(os.PathSeparator) + "keys"
@@ -46,7 +47,9 @@ func main() {
 		panic(err)
 	}
 
-	log.Printf("keys = %#v", keys)
+	if *debug {
+		log.Printf("keys = %#v", keys)
+	}
 
 	err = filepath.WalkDir(*path, func(path string, d fs.DirEntry, err error) error {
 		if strings.Contains(path, string(os.PathSeparator)+".git") {
@@ -56,20 +59,18 @@ func main() {
 		if !d.IsDir() {
 			if g.IsGitCrypted(path) {
 				log.Printf("GIT-CRYPTED: %s", path)
-				header, err := g.ReadFileHeader(path)
-				if err != nil {
-					return err
-				}
 				in, err := os.Open(path)
 				if err != nil {
 					return err
 				}
 				defer in.Close()
+
+				header, err := g.ReadFileHeader(in)
+				if err != nil {
+					return err
+				}
 				var buf bytes.Buffer
 				out := bufio.NewWriter(&buf)
-
-				//ignore := make([]byte, len(header))
-				//in.Read(ignore)
 
 				err = g.DecryptStream(keys[0], header, in, out)
 				if err != nil {

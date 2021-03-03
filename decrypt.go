@@ -131,16 +131,41 @@ func (g *GitCrypt) DecryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32
 	return keyFiles, nil
 }
 
-// ReadFileHeader fetches the git-crypt file header
-func (g *GitCrypt) ReadFileHeader(filename string) ([]byte, error) {
+// ReadFileHeaderFromFile fetches the git-crypt file header from an unopened
+// file
+func (g *GitCrypt) ReadFileHeaderFromFile(filename string) ([]byte, error) {
 	header := make([]byte, 10+aesEncryptorNonceLen)
 	fp, err := os.Open(filename)
 	if err != nil {
 		return header, err
 	}
 	defer fp.Close()
-	_, err = fp.Read(header)
-	//log.Printf("readFileHeader : read %d bytes : %s", n, header)
+	n, err := fp.Read(header)
+	if g.Debug {
+		log.Printf("readFileHeaderFromFile : read %d bytes : %s", n, header)
+	}
+	return header, err
+}
+
+// ReadFileHeader fetches the git-crypt file header from an open seekable
+// file
+func (g *GitCrypt) ReadFileHeader(fp io.ReadSeekCloser) ([]byte, error) {
+	header := make([]byte, 10+aesEncryptorNonceLen)
+	_, err := fp.Seek(0, io.SeekStart)
+	if err != nil {
+		return header, err
+	}
+	n, err := fp.Read(header)
+	if g.Debug {
+		log.Printf("readFileHeader : read %d bytes : %#v", n, header)
+	}
+	if err != nil {
+		return header, err
+	}
+	pos, err := fp.Seek(10+aesEncryptorNonceLen, io.SeekStart)
+	if g.Debug {
+		log.Printf("readFileHeader : seek'd to %d: err = %#v", pos, err)
+	}
 	return header, err
 }
 
@@ -175,7 +200,7 @@ func (g *GitCrypt) IsGitCrypted(fn string) bool {
 
 // DecryptStream decrypts a stream of encrypted git-crypt format data
 // given a key file and header
-func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.Reader, out io.Writer) error {
+func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.ReadSeeker, out io.Writer) error {
 	if g.Debug {
 		log.Printf("header: %#v", header)
 	}
@@ -190,11 +215,19 @@ func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.Reader, out i
 		return fmt.Errorf("git-crypt: error: key version %d not available - please unlock with the latest version of the key", keyVersion)
 	}
 
-	// Skip past the header before we begin calculations
-	ignore := make([]byte, len(header))
-	_, err = in.Read(ignore)
+	// Attempt to detect if we've read anything already; if we haven't, ignore
+	// the header bytes, if not, keep going
+	currentPos, err := in.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return fmt.Errorf("git-crypt: unable to read header: %s", err.Error())
+		return err
+	}
+	if currentPos == 0 {
+		// Skip past the header before we begin calculations
+		ignore := make([]byte, len(header))
+		_, err = in.Read(ignore)
+		if err != nil {
+			return fmt.Errorf("git-crypt: unable to read header: %s", err.Error())
+		}
 	}
 
 	aes := NewAesCtrEncryptor(key.AesKey, nonce)
