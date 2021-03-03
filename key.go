@@ -10,14 +10,15 @@ import (
 )
 
 // KeyFromFile instantiates a new key from a specified file
-func KeyFromFile(filename string) (Key, error) {
-	k := Key{}
+func (g *GitCrypt) KeyFromFile(filename string) (Key, error) {
+	k := Key{Parent: g}
 	err := k.LoadFromFile(filename)
 	return k, err
 }
 
 // Key is a git-crypt key structure
 type Key struct {
+	Parent  *GitCrypt
 	Version uint32
 	Entries []KeyEntry
 	KeyName string
@@ -44,7 +45,7 @@ func (k *Key) Get(version uint32) (KeyEntry, error) {
 
 // LoadFromFile loads a key from a filesystem file
 func (k *Key) LoadFromFile(filename string) error {
-	if !fileExists(filename) {
+	if !k.Parent.fileExists(filename) {
 		return errors.New("file does not exist")
 	}
 	fp, err := os.Open(filename)

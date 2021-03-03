@@ -55,7 +55,7 @@ func (g *GitCrypt) DecryptRepoKey(keyring openpgp.EntityList, keyName string, ke
 		}
 		path += string(os.PathSeparator) + fmt.Sprintf("%d", keyVersion) + string(os.PathSeparator) + seckey + ".gpg"
 
-		if fileExists(path) {
+		if g.fileExists(path) {
 			log.Printf("Decrypting key %v in path %s", keyring, path)
 
 			decryptedContents, err := g.GpgDecryptFromFile(keyring, path)
@@ -94,18 +94,28 @@ func (g *GitCrypt) DecryptRepoKeys(keyring openpgp.EntityList, keyVersion uint32
 	dirents := make([]string, 0)
 	keyFiles := make([]Key, 0)
 
-	if fileExists(keysPath) {
-		fp, err := os.Open(keysPath)
-		if err != nil {
-			return keyFiles, err
-		}
-		defer fp.Close()
-		entries, err := fp.ReadDir(0)
-		if err != nil {
-			return keyFiles, err
-		}
-		for _, entry := range entries {
-			dirents = append(dirents, entry.Name())
+	if g.fileExists(keysPath) {
+		if g.Vfs == nil {
+			fp, err := os.Open(keysPath)
+			if err != nil {
+				return keyFiles, err
+			}
+			defer fp.Close()
+			entries, err := fp.ReadDir(0)
+			if err != nil {
+				return keyFiles, err
+			}
+			for _, entry := range entries {
+				dirents = append(dirents, entry.Name())
+			}
+		} else {
+			entries, err := g.Vfs.ReadDir(keysPath)
+			if err != nil {
+				return keyFiles, err
+			}
+			for _, entry := range entries {
+				dirents = append(dirents, entry.Name())
+			}
 		}
 	}
 
@@ -278,7 +288,19 @@ func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.ReadSeeker, o
 
 // GpgDecryptFromFile decrypts a file using a PGP/GPG key
 func (g *GitCrypt) GpgDecryptFromFile(keyring openpgp.EntityList, path string) ([]byte, error) {
-	filedata, err := ioutil.ReadFile(path)
+	var filedata []byte
+	var err error
+
+	if g.Vfs == nil {
+		filedata, err = ioutil.ReadFile(path)
+	} else {
+		fp, err := g.Vfs.Open(path)
+		if err != nil {
+			return filedata, err
+		}
+		defer fp.Close()
+		filedata, err = io.ReadAll(fp)
+	}
 	if err != nil {
 		log.Printf("GpgDecryptFromFile(%#v, %s): ERR: %s", keyring, path, err.Error())
 		return []byte{}, err

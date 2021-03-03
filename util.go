@@ -8,8 +8,16 @@ import (
 	"os"
 )
 
-func fileExists(name string) bool {
-	if _, err := os.Stat(name); err != nil {
+func (g *GitCrypt) fileExists(name string) bool {
+	if g.Vfs == nil {
+		if _, err := os.Stat(name); err != nil {
+			if os.IsNotExist(err) {
+				return false
+			}
+		}
+		return true
+	}
+	if _, err := g.Vfs.Stat(name); err != nil {
 		if os.IsNotExist(err) {
 			return false
 		}
