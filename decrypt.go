@@ -180,26 +180,54 @@ func (g *GitCrypt) ReadFileHeader(fp io.ReadSeekCloser) ([]byte, error) {
 }
 
 // IsGitCrypted returns whether or not a file has been encrypted in
-// the git-crypt encryption format
+// the git-crypt encryption format. Supports optional Vfs methods.
 func (g *GitCrypt) IsGitCrypted(fn string) bool {
-	_, err := os.Stat(fn)
+	var err error
+	if g.Vfs != nil {
+		_, err = g.Vfs.Stat(fn)
+	} else {
+		_, err = os.Stat(fn)
+	}
 	if err != nil {
 		// If we can't open the file, skip git-crypting
 		log.Printf("ERR: %s", err.Error())
 		return false
 	}
-	fp, err := os.Open(fn)
-	if err != nil {
-		// If we can't open the file, skip git-crypting
-		log.Printf("ERR: %s", err.Error())
-		return false
-	}
-	defer fp.Close()
+
+	var n int
 	b := make([]byte, 10)
-	n, err := fp.ReadAt(b, 0)
-	if err != nil {
-		log.Printf("ERR: %s", err.Error())
-		return false
+
+	if g.Vfs != nil {
+		fp, err := g.Vfs.Open(fn)
+		if err != nil {
+			// If we can't open the file, skip git-crypting
+			log.Printf("ERR: %s", err.Error())
+			return false
+		}
+		defer fp.Close()
+		_, err = fp.Seek(0, io.SeekStart)
+		if err != nil {
+			log.Printf("ERR: %s", err.Error())
+			return false
+		}
+		n, err = fp.Read(b)
+		if err != nil {
+			log.Printf("ERR: %s", err.Error())
+			return false
+		}
+	} else {
+		fp, err := os.Open(fn)
+		if err != nil {
+			// If we can't open the file, skip git-crypting
+			log.Printf("ERR: %s", err.Error())
+			return false
+		}
+		defer fp.Close()
+		n, err = fp.ReadAt(b, 0)
+		if err != nil {
+			log.Printf("ERR: %s", err.Error())
+			return false
+		}
 	}
 	if n < 10 {
 		log.Printf("ERR: only read %d bytes", n)
