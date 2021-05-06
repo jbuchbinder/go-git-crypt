@@ -78,7 +78,7 @@ func main() {
 				}
 				out.Flush()
 
-				err = ioutil.WriteFile(path+".decrypted", bytes.Trim(buf.Bytes(), "\x00"), 0600)
+				err = ioutil.WriteFile(path+".decrypted", buf.Bytes(), 0600)
 				if err != nil {
 					log.Printf("ERR: ioutil.WriteFile(%s): %s", path+".decrypted", err.Error())
 				}

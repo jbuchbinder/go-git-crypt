@@ -291,8 +291,11 @@ func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.ReadSeeker, o
 			log.Printf("output : %x", string(obuf))
 		}
 
-		out.Write(obuf)
-		h.Write(obuf)
+		// Only iterate to number of read bytes to avoid ending nulls
+		for i := 0; i < n; i++ {
+			out.Write([]byte{obuf[i]})
+			h.Write([]byte{obuf[i]})
+		}
 
 		counter++
 	}
