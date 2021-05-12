@@ -300,19 +300,17 @@ func (g *GitCrypt) DecryptStream(keyFile Key, header []byte, in io.ReadSeeker, o
 		counter++
 	}
 
-	// TODO: FIXME: IMPLEMENT: HMAC checksumming
-	// Right now the algorithm isn't working properly, and therefore is
-	// generating a bad sum, so disable for the time being.
-	/*
-		digest := h.Result()
+	// HMAC checksumming
+	digest := h.Result()
+	if g.Debug {
 		log.Printf("digest = %#v, nonce = %#v, len = %d", digest, nonce, aesEncryptorNonceLen)
-		if !leaklessEquals(digest, nonce, aesEncryptorNonceLen) {
-			return fmt.Errorf("git-crypt: error: encrypted file has been tampered with")
-			// Although we've already written the tampered file to stdout, exiting
-			// with a non-zero status will tell git the file has not been filtered,
-			// so git will not replace it.
-		}
-	*/
+	}
+	if !leaklessEquals(digest, nonce, aesEncryptorNonceLen) {
+		return fmt.Errorf("git-crypt: error: encrypted file has been tampered with")
+		// Although we've already written the tampered file to stdout, exiting
+		// with a non-zero status will tell git the file has not been filtered,
+		// so git will not replace it.
+	}
 
 	return nil
 }
