@@ -12,7 +12,7 @@ _WARNING: Until version 0.1 is tagged, the API is subject to arbitrary change._
 - [X] Decryption
 - [ ] Parsing/interpretation of .gitattributes
 - [ ] Encryption
-- [ ] GPG keys - Add to repository
+- [X] GPG keys - Add to repository
 - [ ] GPG keys - Remove from repository
 - [ ] New repository initialization
 

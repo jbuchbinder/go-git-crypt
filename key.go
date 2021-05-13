@@ -105,6 +105,9 @@ func (k Key) Store(out io.Writer) error {
 	writeBigEndianUint32(out, formatVersion)
 
 	if k.KeyName != "" {
+		if k.Debug {
+			log.Printf("Store: KeyName = %s", k.KeyName)
+		}
 		err = writeBigEndianUint32(out, headerFieldKeyName)
 		if err != nil {
 			return err
@@ -121,9 +124,8 @@ func (k Key) Store(out io.Writer) error {
 	}
 	_ = writeBigEndianUint32(out, headerFieldEnd)
 	for _, e := range k.Entries {
-		err = k.Store(out)
-		if err != nil {
-			return err
+		if k.Debug {
+			log.Printf("Store: Write Entry: %#v", e)
 		}
 		err = e.Store(out)
 		if err != nil {

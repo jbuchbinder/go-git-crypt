@@ -56,3 +56,23 @@ func gpgDecrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 	}
 	return ioutil.ReadAll(md.UnverifiedBody)
 }
+
+func gpgEncrypt(in []byte, secretKey *openpgp.Entity) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	w, err := openpgp.Encrypt(buf, openpgp.EntityList{secretKey}, nil, nil, nil)
+	if err != nil {
+		log.Printf("gpgEncrypt(): Encrypt: %s", err.Error())
+		return []byte{}, err
+	}
+	_, err = w.Write(in)
+	if err != nil {
+		log.Printf("gpgEncrypt(): Write: %s", err.Error())
+		return []byte{}, err
+	}
+	err = w.Close()
+	if err != nil {
+		log.Printf("gpgEncrypt(): Close: %s", err.Error())
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
+}
