@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/hex"
 	"flag"
 	"io/ioutil"
 	"log"
@@ -78,10 +77,8 @@ func main() {
 		panic(err)
 	}
 
-	fp := strings.ToUpper(hex.EncodeToString(newkeydata.PrimaryKey.Fingerprint[:]))
-
 	outfilename := keysPath + string(os.PathSeparator) + "default" + string(os.PathSeparator) + "0" +
-		string(os.PathSeparator) + fp + ".gpg"
+		string(os.PathSeparator) + gpg.Fingerprint(newkeydata) + ".gpg"
 	if *debug {
 		log.Printf("outfilename = %s", outfilename)
 	}
