@@ -7,3 +7,12 @@ A Go-flavored attempt to reimplement the git-crypt algorithm in native Go. Prima
 
 _WARNING: Until version 0.1 is tagged, the API is subject to arbitrary change._
 
+## Features
+
+- [X] Decryption
+- [ ] Parsing/interpretation of .gitattributes
+- [ ] Encryption
+- [ ] GPG keys - Add to repository
+- [ ] GPG keys - Remove from repository
+- [ ] New repository initialization
+
