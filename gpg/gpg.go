@@ -2,6 +2,7 @@ package gpg
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -142,6 +143,11 @@ func KeyArrayToEntityList(ka []RawKeyData) (openpgp.EntityList, error) {
 // EntityID extracts the short name string for the ID for an entity.
 func EntityID(e *openpgp.Entity) string {
 	return e.PrimaryKey.KeyIdShortString()
+}
+
+// Fingerprint returns the 40-byte fingerprint name associated with an entity
+func Fingerprint(e *openpgp.Entity) string {
+	return strings.ToUpper(hex.EncodeToString(e.PrimaryKey.Fingerprint[:]))
 }
 
 func getKeyByID(keyring openpgp.EntityList, id string) *openpgp.Entity {
