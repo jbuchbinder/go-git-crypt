@@ -233,7 +233,7 @@ func (g *GitCrypt) IsGitCrypted(fn string) bool {
 		log.Printf("ERR: only read %d bytes", n)
 		return false
 	}
-	return bytes.Compare(b[0:9], []byte{0, 'G', 'I', 'T', 'C', 'R', 'Y', 'P', 'T'}) == 0
+	return bytes.Compare(b[0:9], gitCryptHeader) == 0
 }
 
 // DecryptStream decrypts a stream of encrypted git-crypt format data

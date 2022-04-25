@@ -18,5 +18,10 @@ const (
 	aesEncryptorKeyLen        = aesKeyLen
 	aesEncryptorBlockLen      = 16
 	aesEncryptorMaxCryptBytes = (1 << 32) * 16 // Don't encrypt more than this or the CTR value will repeat itself
+)
 
+var (
+	// gitCryptHeader is the constant header which is present in all
+	// git-crypted files
+	gitCryptHeader = []byte{0, 'G', 'I', 'T', 'C', 'R', 'Y', 'P', 'T'}
 )
