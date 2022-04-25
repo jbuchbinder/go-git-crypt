@@ -8,7 +8,7 @@ replace (
 )
 
 require (
-	github.com/jbuchbinder/go-git-crypt v0.0.0-00010101000000-000000000000
-	github.com/jbuchbinder/go-git-crypt/gpg v0.0.0-00010101000000-000000000000
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
+	github.com/jbuchbinder/go-git-crypt v0.0.0-20210513122809-c18a4d41886e
+	github.com/jbuchbinder/go-git-crypt/gpg v0.0.0-20210513122809-c18a4d41886e
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 )
