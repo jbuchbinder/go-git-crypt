@@ -4,3 +4,4 @@ aes_test.go
 decrypt_test.go
 testdata/repo
 cmd/git-decrypt/git-decrypt
+git-crypt-debug
