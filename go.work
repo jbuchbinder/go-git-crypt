@@ -1,0 +1,8 @@
+go 1.21
+
+use (
+	.
+	./gpg
+	./cmd/git-crypt-add-key
+	./cmd/git-decrypt
+)

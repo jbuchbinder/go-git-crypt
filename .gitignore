@@ -3,5 +3,6 @@ go.sum
 aes_test.go
 decrypt_test.go
 testdata/repo
+cmd/git-crypt-add-key/git-crypt-add-key
 cmd/git-decrypt/git-decrypt
 git-crypt-debug
