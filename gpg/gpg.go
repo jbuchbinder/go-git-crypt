@@ -130,7 +130,7 @@ func KeyArrayToEntityList(ka []RawKeyData) (openpgp.EntityList, error) {
 	for _, k := range ka {
 		e, err := ArmoredKeyIngest(k)
 		if err != nil {
-			log.Printf("gpg.KeyArrayToEntityList(): " + err.Error())
+			log.Printf("gpg.KeyArrayToEntityList(): %s", err.Error())
 			continue
 		}
 		el = append(el, e)

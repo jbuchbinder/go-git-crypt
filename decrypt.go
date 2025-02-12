@@ -70,6 +70,9 @@ func (g *GitCrypt) DecryptRepoKey(keyring openpgp.EntityList, keyName string, ke
 			var thisVersionKeyFile Key
 			br := bytes.NewBuffer(decryptedContents)
 			err = thisVersionKeyFile.Load(br)
+			if err != nil {
+				return keyFile, fmt.Errorf("unable to load version key file")
+			}
 			thisVersionEntry, err := thisVersionKeyFile.Get(keyVersion)
 			if err != nil {
 				return keyFile, fmt.Errorf("GPG-encrypted keyfile is malformed because it does not contain expected key version")
@@ -232,7 +235,7 @@ func (g *GitCrypt) IsGitCrypted(fn string) bool {
 		log.Printf("ERR: only read %d bytes", n)
 		return false
 	}
-	return bytes.Compare(b[0:9], gitCryptHeader) == 0
+	return bytes.Equal(b[0:9], gitCryptHeader)
 }
 
 // DecryptStream decrypts a stream of encrypted git-crypt format data
@@ -327,7 +330,7 @@ func (g *GitCrypt) GpgDecryptFromFile(keyring openpgp.EntityList, path string) (
 			return filedata, err
 		}
 		defer fp.Close()
-		filedata, err = io.ReadAll(fp)
+		filedata, _ = io.ReadAll(fp)
 	}
 	if err != nil {
 		log.Printf("GpgDecryptFromFile(%#v, %s): ERR: %s", keyring, path, err.Error())

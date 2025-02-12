@@ -5,15 +5,14 @@ import (
 	"bytes"
 	"flag"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	gitcrypt "github.com/jbuchbinder/go-git-crypt"
 	"github.com/jbuchbinder/go-git-crypt/gpg"
-	"golang.org/x/crypto/openpgp"
 )
 
 var (
@@ -78,7 +77,7 @@ func main() {
 				}
 				out.Flush()
 
-				err = ioutil.WriteFile(path+".decrypted", buf.Bytes(), 0600)
+				err = os.WriteFile(path+".decrypted", buf.Bytes(), 0600)
 				if err != nil {
 					log.Printf("ERR: ioutil.WriteFile(%s): %s", path+".decrypted", err.Error())
 				}

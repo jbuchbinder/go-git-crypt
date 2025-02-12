@@ -3,14 +3,13 @@ package main
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	gitcrypt "github.com/jbuchbinder/go-git-crypt"
 	"github.com/jbuchbinder/go-git-crypt/gpg"
-	"golang.org/x/crypto/openpgp"
 )
 
 var (
@@ -82,7 +81,7 @@ func main() {
 	if *debug {
 		log.Printf("outfilename = %s", outfilename)
 	}
-	err = ioutil.WriteFile(outfilename, out, 0600)
+	err = os.WriteFile(outfilename, out, 0600)
 	if err != nil {
 		panic(err)
 	}

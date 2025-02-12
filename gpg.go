@@ -3,13 +3,13 @@ package gitcrypt
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"strings"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
 type rawKeyData []byte
@@ -35,7 +35,7 @@ func gpgArmoredKeyIngest(input rawKeyData) (*openpgp.Entity, error) {
 
 func gpgDecrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 	// Determine if there's any armoring going on
-	if strings.Index(string(in), "BEGIN PGP MESSAGE") != -1 {
+	if strings.Contains(string(in), "BEGIN PGP MESSAGE") {
 		result, err := armor.Decode(bytes.NewReader(in))
 		if err != nil {
 			log.Printf("gpgDecrypt(): Decode(armored): %s", err.Error())
@@ -46,7 +46,7 @@ func gpgDecrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 			log.Printf("gpgDecrypt(): ReadMessage(armored): %s", err.Error())
 			return []byte{}, err
 		}
-		return ioutil.ReadAll(md.UnverifiedBody)
+		return io.ReadAll(md.UnverifiedBody)
 	}
 
 	md, err := openpgp.ReadMessage(bytes.NewReader(in), secretKeyring, nil, nil)
@@ -54,7 +54,7 @@ func gpgDecrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 		log.Printf("gpgDecrypt(): ReadMessage: %s", err.Error())
 		return []byte{}, err
 	}
-	return ioutil.ReadAll(md.UnverifiedBody)
+	return io.ReadAll(md.UnverifiedBody)
 }
 
 func gpgEncrypt(in []byte, secretKey *openpgp.Entity) ([]byte, error) {

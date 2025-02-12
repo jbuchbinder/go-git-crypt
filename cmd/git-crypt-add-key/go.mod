@@ -1,6 +1,8 @@
 module github.com/jbuchbinder/go-git-crypt/cmd/git-crypt-add-key
 
-go 1.21
+go 1.23
+
+toolchain go1.23.2
 
 replace (
 	github.com/jbuchbinder/go-git-crypt => ../..
@@ -8,12 +10,14 @@ replace (
 )
 
 require (
-	github.com/jbuchbinder/go-git-crypt v0.0.0-20230531185652-a4bc6e5f7bd6
-	github.com/jbuchbinder/go-git-crypt/gpg v0.0.0-20230531185652-a4bc6e5f7bd6
-	golang.org/x/crypto v0.18.0
+	github.com/ProtonMail/go-crypto v1.1.5
+	github.com/jbuchbinder/go-git-crypt v0.0.0-20250212140507-1b2044cb2630
+	github.com/jbuchbinder/go-git-crypt/gpg v0.0.0-20240127160537-0b99b456d912
 )
 
 require (
-	github.com/kr/text v0.2.0 // indirect
-	golang.org/x/tools v0.17.0 // indirect
+	github.com/cloudflare/circl v1.6.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 )
