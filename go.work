@@ -1,8 +1,10 @@
-go 1.21
+go 1.22.0
+
+toolchain go1.23.2
 
 use (
 	.
-	./gpg
 	./cmd/git-crypt-add-key
 	./cmd/git-decrypt
+	./gpg
 )

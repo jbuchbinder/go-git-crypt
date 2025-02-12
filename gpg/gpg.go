@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
+	"os"
 	"strings"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
 // Decrypt decrypts an input byte array with keys in secretkeyring
@@ -18,7 +19,7 @@ func Decrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 	log.Printf("gpg.Decrypt(%d bytes)", len(in))
 
 	// Determine if there's any armoring going on
-	if strings.Index(string(in), "BEGIN PGP MESSAGE") != -1 {
+	if strings.Contains(string(in), "BEGIN PGP MESSAGE") {
 		log.Printf("gpg.Decrypt(): Found armored message data")
 		result, err := armor.Decode(bytes.NewReader(in))
 		if err != nil {
@@ -28,7 +29,7 @@ func Decrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 		if err != nil {
 			return []byte{}, err
 		}
-		return ioutil.ReadAll(md.UnverifiedBody)
+		return io.ReadAll(md.UnverifiedBody)
 	}
 
 	log.Printf("gpg.Decrypt(): Processing raw data")
@@ -36,7 +37,7 @@ func Decrypt(in []byte, secretKeyring openpgp.EntityList) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-	return ioutil.ReadAll(md.UnverifiedBody)
+	return io.ReadAll(md.UnverifiedBody)
 }
 
 // Encrypt encrypts an input byte array using an opengpg.EntityList
@@ -63,7 +64,7 @@ func Encrypt(in []byte, publicKeyring openpgp.EntityList, id string, masterKeyFi
 		el = openpgp.EntityList{key}
 	} else {
 		// Attach the master key to it so that we can decrypt
-		masterkeyfile, err := ioutil.ReadFile(masterKeyFilePath)
+		masterkeyfile, err := os.ReadFile(masterKeyFilePath)
 		if err != nil {
 			log.Printf("gpg.Encrypt(): Unable to ingest master GPG key: %s", err.Error())
 			el = openpgp.EntityList{key}
@@ -93,7 +94,7 @@ func Encrypt(in []byte, publicKeyring openpgp.EntityList, id string, masterKeyFi
 		return []byte{}, err
 	}
 	log.Printf("Encrypt(): Outputting %d bytes", len(buf.Bytes()))
-	return ioutil.ReadAll(buf)
+	return io.ReadAll(buf)
 }
 
 // RawKeyData is a convenience type for []byte, used for ingesting raw GPG

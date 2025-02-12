@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/jbuchbinder/go-git-crypt/gpg"
-	"golang.org/x/crypto/openpgp"
 )
 
 /*
@@ -321,7 +320,7 @@ func (g *GitCrypt) GpgDecryptFromFile(keyring openpgp.EntityList, path string) (
 	var err error
 
 	if g.Vfs == nil {
-		filedata, err = ioutil.ReadFile(path)
+		filedata, err = os.ReadFile(path)
 	} else {
 		fp, err := g.Vfs.Open(path)
 		if err != nil {

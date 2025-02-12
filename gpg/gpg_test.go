@@ -3,8 +3,8 @@ package gpg
 import (
 	"testing"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/bmizerany/assert"
-	"golang.org/x/crypto/openpgp"
 )
 
 const (
