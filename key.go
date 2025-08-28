@@ -62,7 +62,7 @@ func (k *Key) Load(in io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if preamble[0] != byte(0) && bytes.Compare(preamble[1:13], []byte("GITCRYPTKEY")) != 0 {
+	if preamble[0] != byte(0) && !bytes.Equal(preamble[1:13], []byte("GITCRYPTKEY")) {
 		return fmt.Errorf("malformed preamble")
 	}
 	format, err := readBigEndianUint32(bytes.NewBuffer(preamble[12:]))

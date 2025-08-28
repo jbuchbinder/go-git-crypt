@@ -58,7 +58,7 @@ func (a *AesCtrEncryptor) process(in []byte, out []byte, len uint32) error {
 			if a.Debug {
 				log.Printf("last four bytes of CTR : %x", tmp)
 			}
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				a.ctrValue[aesEncryptorNonceLen+i] = tmp[i]
 			}
 			//log.Printf("ctrValue = %#v", a.ctrValue)
@@ -79,7 +79,7 @@ func (a *AesCtrEncryptor) process(in []byte, out []byte, len uint32) error {
 		//log.Printf("pos %d, in = %x, out = %x, pad = %x", i, in[i], out[i], a.pad[a.byteCounter%aesEncryptorBlockLen])
 
 		if a.byteCounter == 0 {
-			return fmt.Errorf("Aes_ctr_encryptor::process - Too much data to encrypt securely")
+			return fmt.Errorf("aes_ctr_encryptor::process - Too much data to encrypt securely")
 		}
 	}
 	return nil

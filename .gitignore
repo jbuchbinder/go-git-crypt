@@ -1,4 +1,5 @@
 go.sum
+go.work.sum
 *~
 aes_test.go
 decrypt_test.go
